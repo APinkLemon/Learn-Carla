@@ -19,17 +19,17 @@ def main():
     try:
         # First of all, we need to create the client that will send the requests, assume port is 2000
         client = carla.Client('localhost', 2000)
-        client.set_timeout(2.0)
+        client.set_timeout(5.0)
 
         # Retrieve the world that is currently running
         world = client.get_world()
         # world = client.load_world('Town02') # you can also retrive another world by specifically defining
         blueprint_library = world.get_blueprint_library()
         # Set weather for your world
-        weather = carla.WeatherParameters(cloudiness=10.0,
-                                          precipitation=10.0,
-                                          fog_density=10.0)
-        world.set_weather(weather)
+        # weather = carla.WeatherParameters(cloudiness=0.0,
+        #                                   precipitation=0.0,
+        #                                   fog_density=0.0)
+        # world.set_weather(weather)
 
         # set synchorinized mode
         original_settings = world.get_settings()
@@ -45,7 +45,7 @@ def main():
         sensor_queue = Queue()
 
         # create the ego vehicle
-        ego_vehicle_bp = blueprint_library.find('vehicle.mercedes-benz.coupe')
+        ego_vehicle_bp = random.choice(blueprint_library.filter('vehicle.*.*'))
         # black color
         ego_vehicle_bp.set_attribute('color', '0, 0, 0')
         # get a random valid occupation in the world
@@ -93,7 +93,7 @@ def main():
             # set the sectator to follow the ego vehicle
             spectator = world.get_spectator()
             transform = ego_vehicle.get_transform()
-            spectator.set_transform(carla.Transform(transform.location + carla.Location(z=20),
+            spectator.set_transform(carla.Transform(transform.location + carla.Location(z=50),
                                                     carla.Rotation(pitch=-90)))
 
             # As the queue is blocking, we will wait in the queue.get() methods
