@@ -15,9 +15,12 @@ def draw_waypoints(image, points):
     img_with_waypoints = image
     point_color = (255, 0, 0)
     for i, point in enumerate(points):
-        # print(i)
         pixel = pos2pixel(point)
+        pixel_text = copy.deepcopy(pixel)
+        pixel_text[1] -= 30
         img_with_waypoints = cv2.circle(img_with_waypoints, pixel, 8, point_color, 16)
+        img_with_waypoints = cv2.putText(img_with_waypoints, str(i), pixel_text,
+                                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 2)
     return img_with_waypoints
 
 
@@ -32,4 +35,4 @@ print(vehicle_pos.shape)
 
 img = copy.deepcopy(img_init)
 img = draw_waypoints(img, vehicle_pos)
-cv2.imwrite("img_with_track.png", img)
+cv2.imwrite("img_with_point_num.png", img)
