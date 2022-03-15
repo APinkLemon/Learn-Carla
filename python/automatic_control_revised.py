@@ -20,17 +20,24 @@ from carla_utils import get_vehicle_info, get_transform_location
 from python.agents.navigation.behavior_agent import BehaviorAgent
 
 
-def sensor_callback(sensor_data, sensor_queue, sensor_name):
+def sensor_callback(sensor_data, sensor_queue, sensor_name, vehicle):
+    data_dir = 'D:\\DataSet\\trans\\demo\\%06d' % sensor_data.frame
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
+
     if 'lidar' in sensor_name:
-        sensor_data.save_to_disk(os.path.join('../outputs/output_synchronized', '%06d.ply' % sensor_data.frame))
+        sensor_data.save_to_disk(os.path.join(data_dir, 'raw_lidar.ply'))
+        np.save(os.path.join(data_dir, 'vehicle_info.npy'), np.array(get_vehicle_info(vehicle)))
     if 'camera' in sensor_name:
-        sensor_data.save_to_disk(os.path.join('../outputs/output_synchronized', '%06d.png' % sensor_data.frame))
+        sensor_data.save_to_disk(os.path.join(data_dir, 'raw_image.png'))
     sensor_queue.put((sensor_data.frame, sensor_name))
 
 
 def main():
     sensor_list = []
-    vehicle_info = []
+    vehicle_info_list = []
+    destination_list = [14, 67, 4]
+    destination_list = [4]
     try:
         client = carla.Client('localhost', 2000)
         client.set_timeout(10.0)
@@ -56,13 +63,15 @@ def main():
         all_default_spawn = world.get_map().get_spawn_points()
 
         map_spawn_points = []
-        print(all_default_spawn)
+        # print(all_default_spawn)
         for default_spawn in all_default_spawn:
             map_spawn_points.append(get_transform_location(default_spawn))
         np.save("map2_spawn_points.npy", np.array(map_spawn_points))
 
         # randomly choose one as the start point
-        spawn_point = random.choice(all_default_spawn) if all_default_spawn else carla.Transform()
+        spawn_point = all_default_spawn[67]
+        destination = all_default_spawn[destination_list[0]]
+        destination_list.pop(0)
 
         # create the blueprint library
         ego_vehicle_bp = blueprint_library.find('vehicle.dodge.charger_police_2020')
@@ -81,7 +90,7 @@ def main():
         camera_transform = carla.Transform(carla.Location(x=1.5, z=2.4))
         camera = world.spawn_actor(camera_bp, camera_transform, attach_to=vehicle)
         # set the callback function
-        camera.listen(lambda image: sensor_callback(image, sensor_queue, "camera"))
+        camera.listen(lambda image: sensor_callback(image, sensor_queue, "camera", vehicle))
         sensor_list.append(camera)
 
         # we also add a lidar on it
@@ -98,7 +107,7 @@ def main():
         # spawn the lidar
         lidar = world.spawn_actor(lidar_bp, lidar_transform, attach_to=vehicle)
         lidar.listen(
-            lambda point_cloud: sensor_callback(point_cloud, sensor_queue, "lidar"))
+            lambda point_cloud: sensor_callback(point_cloud, sensor_queue, "lidar", vehicle))
         sensor_list.append(lidar)
 
         # we need to tick the world once to let the client update the spawn position
@@ -107,15 +116,15 @@ def main():
         # create the behavior agent
         agent = BehaviorAgent(vehicle, behavior='normal')
 
-        # set the destination spot
-        spawn_points = world.get_map().get_spawn_points()
-        random.shuffle(spawn_points)
-
-        # to avoid the destination and start position same
-        if spawn_points[0].location != agent.vehicle.get_location():
-            destination = spawn_points[0]
-        else:
-            destination = spawn_points[1]
+        # # set the destination spot
+        # spawn_points = world.get_map().get_spawn_points()
+        # random.shuffle(spawn_points)
+        #
+        # # to avoid the destination and start position same
+        # if spawn_points[0].location != agent.vehicle.get_location():
+        #     destination = spawn_points[0]
+        # else:
+        #     destination = spawn_points[1]
 
         # generate the route
         agent.set_destination(agent.vehicle.get_location(), destination.location, clean=True)
@@ -127,8 +136,13 @@ def main():
             world.tick()
             
             if len(agent._local_planner.waypoints_queue) < 1:
-                print('======== Success, Arrivied at Target Point!')
-                break
+                if len(destination_list) == 0:
+                    print('======== Success, Arrivied at Target Point!')
+                    break
+                destination = all_default_spawn[destination_list[0]]
+                destination_list.pop(0)
+                agent.set_destination(agent.vehicle.get_location(), destination.location, clean=True)
+                agent.update_information(vehicle)
                 
             # top view
             spectator = world.get_spectator()
@@ -142,20 +156,20 @@ def main():
             control = agent.run_step(debug=True)
             vehicle.apply_control(control)
 
-            vehicle_info.append(get_vehicle_info(vehicle))
+            vehicle_info_list.append(get_vehicle_info(vehicle))
 
             # As the queue is blocking, we will wait in the queue.get() methods
             # until all the information is processed and we continue with the next frame.
-            # try:
-            #     for i in range(0, len(sensor_list)):
-            #         s_frame = sensor_queue.get(True, 1.0)
-            #         print("    Frame: %d   Sensor: %s" % (s_frame[0], s_frame[1]))
-            #
-            # except Empty:
-            #     print("   Some of the sensor information is missed")
+            try:
+                for i in range(0, len(sensor_list)):
+                    s_frame = sensor_queue.get(True, 1.0)
+                    print("Frame: %d   Sensor: %s" % (s_frame[0], s_frame[1]))
+
+            except Empty:
+                print("Some of the sensor information is missed")
 
     finally:
-        # np.save("vehicle_info.npy", np.array(vehicle_info))
+        np.save("vehicle_info.npy", np.array(vehicle_info_list))
         world.apply_settings(origin_settings)
         vehicle.destroy()
         for sensor in sensor_list:
