@@ -26,3 +26,13 @@ def get_vehicle_info(vehicle):
         acceleration.z,
     ])
     return vehicle_info
+
+
+def get_transform_location(transform):
+    location = transform.location
+    vehicle_info = np.array([
+        location.x,
+        location.y,
+        location.z,
+    ])
+    return vehicle_info

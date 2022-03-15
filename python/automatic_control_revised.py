@@ -16,7 +16,7 @@ from queue import Empty
 
 import numpy as np
 
-from carla_utils import get_vehicle_info
+from carla_utils import get_vehicle_info, get_transform_location
 from python.agents.navigation.behavior_agent import BehaviorAgent
 
 
@@ -54,6 +54,13 @@ def main():
 
         # read all valid spawn points
         all_default_spawn = world.get_map().get_spawn_points()
+
+        map_spawn_points = []
+        print(all_default_spawn)
+        for default_spawn in all_default_spawn:
+            map_spawn_points.append(get_transform_location(default_spawn))
+        np.save("map2_spawn_points.npy", np.array(map_spawn_points))
+
         # randomly choose one as the start point
         spawn_point = random.choice(all_default_spawn) if all_default_spawn else carla.Transform()
 
@@ -114,7 +121,7 @@ def main():
         agent.set_destination(agent.vehicle.get_location(), destination.location, clean=True)
 
         while True:
-            print(time.time())
+            # print(time.time())
             agent.update_information(vehicle)
 
             world.tick()
@@ -148,7 +155,7 @@ def main():
             #     print("   Some of the sensor information is missed")
 
     finally:
-        np.save("vehicle_info.npy", np.array(vehicle_info))
+        # np.save("vehicle_info.npy", np.array(vehicle_info))
         world.apply_settings(origin_settings)
         vehicle.destroy()
         for sensor in sensor_list:
