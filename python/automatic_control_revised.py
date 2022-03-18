@@ -37,7 +37,7 @@ def main():
     sensor_list = []
     vehicle_info_list = []
     destination_list = [14, 67, 4]
-    destination_list = [4]
+    # destination_list = [4]
     try:
         client = carla.Client('localhost', 2000)
         client.set_timeout(10.0)
@@ -95,10 +95,12 @@ def main():
 
         # we also add a lidar on it
         lidar_bp = blueprint_library.find('sensor.lidar.ray_cast')
-        lidar_bp.set_attribute('channels', str(32))
-        lidar_bp.set_attribute('points_per_second', str(90000))
-        lidar_bp.set_attribute('rotation_frequency', str(40))
-        lidar_bp.set_attribute('range', str(20))
+        lidar_bp.set_attribute('channels', str(64))
+        lidar_bp.set_attribute('points_per_second', str(600000))
+        lidar_bp.set_attribute('rotation_frequency', str(20))
+        lidar_bp.set_attribute('range', str(85))
+        lidar_bp.set_attribute('upper_fov', str(10))
+        lidar_bp.set_attribute('lower_fov', str(-30))
 
         # set the relative location
         lidar_location = carla.Location(0, 0, 2)
